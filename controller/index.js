@@ -1,7 +1,7 @@
 const { getNewVideo, hasLike, like } = require('../api')
 const { listInterval, taskInterval, likeInterval, likeCount } = require('../config')
 const colors = require('colors')
-const taskList = []
+let taskList = []
 let isLock = false
 
 function start() {
@@ -31,7 +31,7 @@ async function lock() {
   }
 }
 
-async function getVideoList(){
+async function getVideoList() {
   const videoRes = await getNewVideo()
   if (videoRes.code != 0) return
   // 点赞数为0
@@ -60,7 +60,7 @@ async function goLike(item) {
       }
       isLock = false
     }, 1000 * likeInterval);
-  }else{
+  } else {
     isLock = false
   }
 }
