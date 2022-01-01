@@ -14,7 +14,7 @@ function start() {
   }, 1000 * taskInterval);
 }
 
-async function lock() {
+function lock() {
   function unlock() {
     let task = taskList.shift();
     if (task) {
