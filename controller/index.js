@@ -1,5 +1,5 @@
-const { getNewVideo, hasLike, like } = require('../api')
-const { listInterval, taskInterval, likeInterval, likeCount } = require('../config')
+const { getNewVideo, like } = require('../api')
+const { listInterval, taskInterval, likeCount } = require('../config')
 const colors = require('colors')
 let taskList = []
 let isLock = false
@@ -41,28 +41,26 @@ async function getVideoList() {
   }
   // 过滤重复
   const filterList = list.filter(item => !taskList.find(item2 => item.bvid == item2.bvid))
+  if (taskList.length > 5) {
+    taskList = []
+  }
   taskList.push(...filterList)
   console.log(`当前任务线程数：${taskList.length}`);
 }
 
 async function goLike(item) {
-  const res = await hasLike(item.bvid)
-  if (res.data == 0) {
-    console.log(`${item.bvid}无点赞，等待${likeInterval}秒进行点赞`);
-    setTimeout(async () => {
-      const likeRes = await like(item.bvid)
-      if (likeRes.code == 0) {
-        console.log('\x1B[32m', `${item.bvid}----${item.title}----点赞成功`.green);
-      } else {
-        // 重新进入线程
-        taskList.push(item)
-        console.log('\x1B[31m', `warning: ${item.bvid} >>> ${likeRes.message}`.red);
-      }
-      isLock = false
-    }, 1000 * likeInterval);
+  const likeRes = await like(item.bvid)
+  if (likeRes.code == 0) {
+    console.log('\x1B[32m', `${item.bvid}----${item.title}----点赞成功`.green);
   } else {
-    isLock = false
+    // 重复点赞不重新加入线程池
+    if (likeRes.code != 65006) {
+      taskList.push(item)
+      console.log('\x1B[31m', `warning: ${item.bvid} >>> ${likeRes.message}`.red);
+    }
   }
+  console.log(likeRes.message);
+  isLock = false
 }
 
 module.exports = start
