@@ -55,27 +55,27 @@ async function goLike(item) {
     const likeRes = await like(item.bvid, `http://${proxy}`)
     if (likeRes.code == 0) {
       console.log('\x1B[32m', `${item.bvid}----${item.title}----点赞成功`.green)
-    } else {
-      // 重复点赞不重新加入线程池,其他情况重新加入线程池
-      if (likeRes.code != 65006) {
-        taskList.push(item)
-        console.log(
-          '\x1B[31m',
-          `warning: ${item.bvid} >>> ${likeRes.message}`.red
-        )
-      }
     }
 
-    // 任务为0，重新开始
-    if (taskList.length == 0) {
-      console.log('列表执行完毕，重新执行线程')
-      start()
+    // 成功，重复点赞不重新加入线程池,其他情况重新加入线程池
+    if (![0, 65006].includes(likeRes.code)) {
+      taskList.push(item)
+      console.log(
+        '\x1B[31m',
+        `warning: ${likeRes.code} >>> ${item.bvid} >>> ${likeRes.message}`.red
+      )
     }
 
     // 监测代理超时
     lastLikeResult = useProxyTimeOutCheck(likeStartTime)
 
     isLock = false
+
+    // 任务为0，重新开始
+    if (taskList.length == 0) {
+      console.log('列表执行完毕，重新执行线程')
+      start()
+    }
   } catch (error) {
     console.log('代理超时或点赞出错，重新执行'.red)
     taskList.push(item)
