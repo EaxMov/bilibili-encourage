@@ -29,18 +29,23 @@ function hasLike(aidOrVId) {
 }
 
 // 点赞
-function like(aidOrVid) {
+function like(aidOrVid, proxy) {
   const formData = {
     ...idType(aidOrVid),
     csrf: bili_jct,
     like: 1
   }
-  return $http.post(`${baseUrl}/archive/like`, formData)
+  return $http.post(`${baseUrl}/archive/like`, formData, proxy)
+}
+
+// 获取代理
+function getProxy() {
+  return $http.get(`http://demo.spiderpy.cn/get/?type=http`)
 }
 
 module.exports = {
   getNewVideo,
   hasLike,
-  like
+  like,
+  getProxy
 }
-

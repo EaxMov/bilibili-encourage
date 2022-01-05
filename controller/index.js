@@ -1,66 +1,87 @@
-const { getNewVideo, like } = require('../api')
-const { listInterval, taskInterval, likeCount } = require('../config')
+const { taskInterval } = require('../config')
+const { getNewVideo, like, getProxy } = require('../api')
+const { useProxyTimeOutCheck } = require('../hook/useLike')
+const { useFilterVideo } = require('../hook/useVideo')
 const colors = require('colors')
+
 let taskList = []
 let isLock = false
+let taskId = null
+let proxy = null
+let lastLikeResult = false
 
-function start() {
-  console.log(`初始化中...${listInterval}秒后开始任务`.rainbow);
-  setInterval(() => {
-    getVideoList()
-  }, 1000 * listInterval);
-  setInterval(() => {
+async function start() {
+  if (taskId) clearInterval(taskId)
+  console.log(`线程启动>>>>`)
+  const res = await getVideoList()
+  taskId = setInterval(() => {
     lock()
-  }, 1000 * taskInterval);
+  }, 1000 * taskInterval)
 }
 
 function lock() {
   function unlock() {
-    let task = taskList.shift();
+    let task = taskList.shift()
     if (task) {
       goLike(task)
     } else {
-      isLock = false;
+      isLock = false
     }
   }
   if (isLock) {
-    console.log("排队中...");
+    console.log('waitting...')
   } else {
-    isLock = true;
+    isLock = true
     unlock()
   }
 }
 
 async function getVideoList() {
   const videoRes = await getNewVideo()
-  if (videoRes.code != 0) return
-  // 点赞数为0
-  let list = videoRes.data.result.filter(item => item.like == 0)
-  if (likeCount) {
-    list = list.slice(0, likeCount)
-  }
-  // 过滤重复
-  const filterList = list.filter(item => !taskList.find(item2 => item.bvid == item2.bvid))
-  if (taskList.length > 5) {
-    taskList = []
-  }
-  taskList.push(...filterList)
-  console.log(`当前任务线程数：${taskList.length}`);
+  const video = useFilterVideo(videoRes, taskList)
+  taskList.push(...video)
+  console.log(`当前任务线程数：${taskList.length}`)
 }
 
 async function goLike(item) {
-  const likeRes = await like(item.bvid)
-  if (likeRes.code == 0) {
-    console.log('\x1B[32m', `${item.bvid}----${item.title}----点赞成功`.green);
-  } else {
-    // 重复点赞不重新加入线程池
-    if (likeRes.code != 65006) {
-      taskList.push(item)
-      console.log('\x1B[31m', `warning: ${item.bvid} >>> ${likeRes.message}`.red);
-    }
+  // 如果上次点赞失败就重新获取代理
+  if (!lastLikeResult || !proxy) {
+    const proxyRes = await getProxy()
+    proxy = proxyRes.proxy
+    console.log('获取代理成功', proxy)
   }
-  console.log(likeRes.message);
-  isLock = false
+  try {
+    const likeStartTime = new Date().getTime()
+    const likeRes = await like(item.bvid, `http://${proxy}`)
+    if (likeRes.code == 0) {
+      console.log('\x1B[32m', `${item.bvid}----${item.title}----点赞成功`.green)
+    } else {
+      // 重复点赞不重新加入线程池,其他情况重新加入线程池
+      if (likeRes.code != 65006) {
+        taskList.push(item)
+        console.log(
+          '\x1B[31m',
+          `warning: ${item.bvid} >>> ${likeRes.message}`.red
+        )
+      }
+    }
+
+    // 任务为0，重新开始
+    if (taskList.length == 0) {
+      console.log('列表执行完毕，重新执行线程')
+      start()
+    }
+
+    // 监测代理超时
+    lastLikeResult = useProxyTimeOutCheck(likeStartTime)
+
+    isLock = false
+  } catch (error) {
+    console.log('代理超时或点赞出错，重新执行'.red)
+    taskList.push(item)
+    lastLikeResult = false
+    isLock = false
+  }
 }
 
 module.exports = start

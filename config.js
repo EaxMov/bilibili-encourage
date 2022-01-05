@@ -1,7 +1,6 @@
 module.exports = {
-  bili_jct: '3c6475a13c630f536854e895da93d684',
-  SESSDATA: 'aba455ae%2C1656586118%2Cec46b%2A11',
-  listInterval: 7,
-  taskInterval: 2.5,
+  bili_jct: '997785f278b3fd02f543a19f8a240343',
+  SESSDATA: '103d4f97%2C1656899068%2C40ba2%2A11',
+  taskInterval: 1,
   likeCount: 5
 }
